@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Teleprompter</title>
+<style>
+  body{background:#000;color:#fff;font-family:'Georgia',Georgia,serif;font-size:30px;line-height:1.9;padding:40px 100px;max-width:1100px;margin:0 auto}
+  p{margin:22px 0}.broll{color:#FBBF24;font-size:0.7em;font-family:sans-serif}
+  strong{color:#A78BFA}
+  .ctrl{position:fixed;bottom:20px;right:20px;display:flex;gap:8px;background:rgba(0,0,0,0.7);padding:10px;border-radius:10px}
+  .btn{background:#4F46E5;color:#fff;border:none;padding:10px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+  #spd{color:#9CA3AF;font-size:12px;padding:10px;align-self:center}
+  .back{position:fixed;top:16px;left:16px;color:#71717A;font-size:13px;text-decoration:none}
+</style>
+</head>
+<body>
+<a href="dashboard.html" class="back">← Dashboard</a>
+<p></p>
+<div class="ctrl">
+  <button class="btn" onclick="adj(-0.5)">− Slower</button>
+  <span id="spd">1 px/s</span>
+  <button class="btn" onclick="adj(0.5)">+ Faster</button>
+  <button class="btn" id="tog" onclick="toggle()">▶ Start</button>
+</div>
+<script>
+let sp=1,on=false,iv=null;
+function toggle(){on=!on;document.getElementById('tog').textContent=on?'⏸ Pause':'▶ Start';if(on)iv=setInterval(()=>window.scrollBy(0,sp),50);else clearInterval(iv);}
+function adj(d){sp=Math.max(0.5,Math.min(8,sp+d));document.getElementById('spd').textContent=sp+'px/s';}
+</script>
+</body></html>
