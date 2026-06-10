@@ -69,25 +69,60 @@ def download_reference_thumbnail(video_url: str) -> Path | None:
     return None
 
 
-def generate_concepts(outlier: dict, brand_voice: dict) -> list[dict]:
-    prompt = f"""You are a YouTube thumbnail strategist. Generate 3 distinct thumbnail concepts.
+def _load_todays_script() -> dict:
+    """Return the hook and title from today's script, if it exists."""
+    today = str(date.today())
+    path = Path(".tmp/scripts") / f"{today}-script.md"
+    if not path.exists():
+        return {}
+    content = path.read_text(encoding="utf-8")
+    result = {}
+    # Pull title from the h1 heading (first line after the hooks section)
+    for line in content.split("\n"):
+        line = line.strip()
+        if line.startswith("# ") and "Script" not in line:
+            result["title"] = line.lstrip("# ").strip()
+            break
+    # Pull first hook from the HOOKS section
+    in_hooks = False
+    for line in content.split("\n"):
+        if "## HOOKS" in line:
+            in_hooks = True
+            continue
+        if in_hooks and line.strip().startswith("1."):
+            result["hook"] = line.strip()[2:].strip()
+            break
+    return result
 
-VIRAL VIDEO TO STUDY:
+
+def generate_concepts(outlier: dict, brand_voice: dict, script: dict) -> list[dict]:
+    video_title = script.get("title") or script.get("hook") or "ADHD / neurodivergent topic"
+    video_hook = script.get("hook", video_title)
+
+    prompt = f"""You are a YouTube thumbnail strategist. Design thumbnails for an ORIGINAL video — not a copy of the reference.
+
+VIRAL REFERENCE (study the VISUAL FORMAT only):
 Title: {outlier['title']}
-Channel: {outlier['channel']}
-Performance: {outlier['score']}x above average ({outlier['views']} views)
+Performance: {outlier['score']}x above average
+What made the thumbnail work: identify the visual structure (e.g. face + text, split screen, bold statement, reaction shot). Extract the FORMAT — ignore the topic.
+
+YOUR VIDEO (design thumbnails for THIS):
+Title: {video_title}
+Hook: {video_hook}
 
 BRAND VOICE:
-Tone: {brand_voice.get('Tone', 'bold, direct')}
+Tone: {brand_voice.get('Tone', 'bold, direct, relatable')}
 Thumbnail style: {brand_voice.get('Thumbnail Style', 'high contrast, emotional, text overlay')}
-Ideal viewer: {brand_voice.get('ICA', '')}
+Ideal viewer: {brand_voice.get('ICA', 'adults with ADHD or neurodivergent traits')}
 
-Generate 3 thumbnail concepts. For each provide:
+Generate 3 thumbnail concepts for YOUR VIDEO using the same visual format that made the reference viral. Do NOT depict the reference video's topic.
+
+For each concept:
 
 CONCEPT 1:
-Prompt: [Complete DALL-E 3 prompt. Must include: "YouTube thumbnail, photorealistic, high contrast" + composition + colors + facial expression if applicable + bold text overlay placement + background]
-Text: [5 words max — the overlay text on the thumbnail]
-Strategy: [One sentence on why this drives clicks]
+Prompt: [Complete image generation prompt. Must say "YouTube thumbnail, photorealistic, high contrast". Describe composition, colors, facial expression if any, bold text placement, background. Base it on YOUR VIDEO's topic.]
+Text: [5 words max — overlay text that goes on the thumbnail]
+Strategy: [One sentence on why this drives clicks for your video]
 
 CONCEPT 2:
 Prompt: [...]
@@ -99,7 +134,7 @@ Prompt: [...]
 Text: [...]
 Strategy: [...]
 
-Make each concept visually distinct. One should use emotion/face, one should use bold graphic/text only, one should use a scene or result."""
+Make each concept visually distinct: one emotion/face, one bold graphic/text only, one scene or result."""
 
     response = complete(prompt, max_tokens=1200)
     return _parse_concepts(response)
@@ -165,10 +200,13 @@ def run() -> list[Path]:
     today = str(date.today())
     THUMBNAILS_DIR.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Designing thumbnails for: {outlier['title'][:55]}")
+    script = _load_todays_script()
+    video_title = script.get("title") or script.get("hook") or outlier["title"]
+    logger.info(f"Designing thumbnails for YOUR video: {video_title[:60]}")
+    logger.info(f"Reference format: {outlier['title'][:55]}")
     download_reference_thumbnail(outlier["url"])
 
-    concepts = generate_concepts(outlier, brand_voice)
+    concepts = generate_concepts(outlier, brand_voice, script)
     logger.info(f"Generated {len(concepts)} thumbnail concepts")
 
     # Save analysis markdown
