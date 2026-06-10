@@ -53,24 +53,29 @@ def get_top_outlier() -> dict | None:
 
 
 def generate_hooks(outlier: dict, brand_voice: dict) -> list[str]:
-    prompt = f"""You are a YouTube hook specialist. Generate 5 high-converting hooks for a video.
+    prompt = f"""You are a YouTube hook specialist. Study WHY a video went viral, then write hooks for a DIFFERENT video on a DIFFERENT angle.
 
-REFERENCE VIDEO (this went viral):
+VIRAL REFERENCE (study the format, not the topic):
 Title: {outlier['title']}
 Channel: {outlier['channel']}
 Views: {outlier['views']} ({outlier['score']}x the channel average)
 
-BRAND VOICE:
+What made this work: identify the hook structure (e.g. hidden revelation, emotional contrast, relatable struggle, curiosity gap, surprising fact). Extract the FORMAT — ignore the specific topic.
+
+BRAND VOICE (your channel, your angle):
 Tone: {brand_voice.get('Tone', 'engaging, direct, educational')}
 Ideal viewer: {brand_voice.get('ICA', 'curious learners')}
+Topics/pillars: {brand_voice.get('Topics', 'ADHD, neurodiversity, mental health')}
 Hooks that work: {brand_voice.get('Hooks That Work', 'problem-solution, curiosity gap')}
 Words to use: {brand_voice.get('Words You Use', '')}
 Words to avoid: {brand_voice.get('Words You Avoid', '')}
 
-Generate exactly 5 hooks. Rules:
+Generate 5 hooks that apply the SAME FORMAT as the reference but on a FRESH TOPIC from your brand pillars. Do NOT copy or closely paraphrase the reference video's concept.
+
+Rules:
 - Under 25 words each
-- Create immediate curiosity or name a painful problem
-- Feel natural, not clickbait
+- Different topic from the reference video
+- Same emotional pull / structure as what made it viral
 - Match the brand voice exactly
 
 Output each hook on its own line, numbered 1-5. Nothing else."""
@@ -90,22 +95,25 @@ Output each hook on its own line, numbered 1-5. Nothing else."""
 def write_script(outlier: dict, brand_voice: dict, hooks: list[str]) -> str:
     hooks_text = "\n".join(f"{i+1}. {h}" for i, h in enumerate(hooks))
 
-    prompt = f"""You are an expert YouTube scriptwriter. Write a complete video script.
+    prompt = f"""You are an expert YouTube scriptwriter. Write a complete, original video script.
 
-REFERENCE VIDEO (it overperformed by {outlier['score']}x):
+VIRAL REFERENCE (format inspiration only — do NOT copy this topic):
 Title: {outlier['title']}
 Channel: {outlier['channel']}
-URL: {outlier['url']}
+What worked: emotional revelation, relatable struggle, hidden truth format
+
+YOUR SCRIPT must be on a DIFFERENT topic that fits the brand voice below.
+Apply the same emotional structure but with a fresh angle your audience hasn't seen.
 
 BRAND VOICE:
 Tone: {brand_voice.get('Tone', '')}
-Topics/pillars: {brand_voice.get('Topics', '')}
+Topics/pillars: {brand_voice.get('Topics', 'ADHD, neurodiversity, mental health')}
 Ideal viewer: {brand_voice.get('ICA', '')}
 Words to use: {brand_voice.get('Words You Use', '')}
 Words to avoid: {brand_voice.get('Words You Avoid', '')}
 Title patterns: {brand_voice.get('Title Patterns', '')}
 
-HOOKS (pick the strongest one to open with):
+HOOKS (pick the strongest one — this sets your topic):
 {hooks_text}
 
 Write the complete script using this exact structure:
