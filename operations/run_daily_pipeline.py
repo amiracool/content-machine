@@ -38,6 +38,22 @@ def _run_step(label: str, func, *args, **kwargs):
         return None
 
 
+def _publish_docs():
+    import subprocess
+    today = datetime.now().strftime("%Y-%m-%d")
+    cmds = [
+        ["git", "add", "docs/"],
+        ["git", "commit", "-m", f"dashboard: {today}"],
+        ["git", "push"],
+    ]
+    for cmd in cmds:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0 and "nothing to commit" not in result.stdout:
+            logger.warning(f"git {cmd[1]}: {result.stderr.strip()}")
+        else:
+            logger.info(f"git {cmd[1]}: ok")
+
+
 def run(steps: list[str] | None = None):
     from operations import trend_scout, script_writer, thumbnail_designer, daily_reporter, dashboard
 
@@ -84,6 +100,10 @@ def run(steps: list[str] | None = None):
     # Dashboard — always runs
     if "dashboard" in active:
         _run_step("Dashboard", dashboard.run)
+
+    # Publish to GitHub Pages
+    if "dashboard" in active:
+        _run_step("Publish to GitHub Pages", _publish_docs)
 
     elapsed = (datetime.now() - start).seconds
     logger.info(f"{'='*50}")

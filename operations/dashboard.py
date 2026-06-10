@@ -5,6 +5,7 @@ Generates 4 local HTML tools: dashboard, recording sheet, teleprompter, viewer.
 Usage:
     python -m operations.dashboard
 """
+import base64
 import re
 import sys
 from pathlib import Path
@@ -61,12 +62,18 @@ def _load_data() -> dict:
 
     thumbnails = sorted((TMP_DIR / "thumbnails").glob(f"{today}-thumbnail-*.png"))
 
+    # Embed images as base64 so the HTML works anywhere (local and GitHub Pages)
+    thumb_data_uris = []
+    for p in thumbnails:
+        b64 = base64.b64encode(p.read_bytes()).decode()
+        thumb_data_uris.append(f"data:image/png;base64,{b64}")
+
     return {
         "today": today,
         "outliers": outliers,
         "cal": cal or {},
         "script": script,
-        "thumbnails": [str(p.resolve()) for p in thumbnails],
+        "thumbnails": thumb_data_uris,
     }
 
 
@@ -240,9 +247,13 @@ def _viewer(d: dict) -> str:
 </body></html>"""
 
 
+DOCS_DIR = Path("docs")
+
+
 def run() -> dict:
     logger.info("=== Dashboard starting ===")
     TMP_DIR.mkdir(exist_ok=True)
+    DOCS_DIR.mkdir(exist_ok=True)
 
     try:
         data = _load_data()
@@ -264,9 +275,16 @@ def run() -> dict:
     }
 
     for filename, content in files.items():
-        path = TMP_DIR / filename
-        path.write_text(content, encoding="utf-8")
-        logger.info(f"Generated: {path}")
+        # Write to .tmp/ (local) and docs/ (GitHub Pages)
+        (TMP_DIR / filename).write_text(content, encoding="utf-8")
+        (DOCS_DIR / filename).write_text(content, encoding="utf-8")
+        logger.info(f"Generated: {TMP_DIR / filename}")
+
+    # index.html → redirect to dashboard so the Pages root URL works
+    (DOCS_DIR / "index.html").write_text(
+        '<meta http-equiv="refresh" content="0; url=dashboard.html">',
+        encoding="utf-8",
+    )
 
     logger.info("=== Dashboard complete ===")
     return {name: str(TMP_DIR / name) for name in files}
