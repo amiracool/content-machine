@@ -5,8 +5,8 @@ Generates 4 local HTML tools: dashboard, recording sheet, teleprompter, viewer.
 Usage:
     python -m operations.dashboard
 """
-import base64
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -62,18 +62,12 @@ def _load_data() -> dict:
 
     thumbnails = sorted((TMP_DIR / "thumbnails").glob(f"{today}-thumbnail-*.png"))
 
-    # Embed images as base64 so the HTML works anywhere (local and GitHub Pages)
-    thumb_data_uris = []
-    for p in thumbnails:
-        b64 = base64.b64encode(p.read_bytes()).decode()
-        thumb_data_uris.append(f"data:image/png;base64,{b64}")
-
     return {
         "today": today,
         "outliers": outliers,
         "cal": cal or {},
         "script": script,
-        "thumbnails": thumb_data_uris,
+        "thumbnails": [p.name for p in thumbnails],  # filenames only; copied to docs/thumbnails/
     }
 
 
@@ -86,7 +80,7 @@ def _dashboard(d: dict) -> str:
         for o in d["outliers"][:5]
     )
     thumb_imgs = "".join(
-        f'<img src="{p}" style="width:100%;max-width:320px;border-radius:8px;margin:6px;" />'
+        f'<img src="thumbnails/{p}" style="width:100%;max-width:320px;border-radius:8px;margin:6px;" />'
         for p in d["thumbnails"]
     ) or '<p style="color:#6B7280">No thumbnails yet</p>'
 
@@ -285,6 +279,18 @@ def run() -> dict:
         '<meta http-equiv="refresh" content="0; url=dashboard.html">',
         encoding="utf-8",
     )
+
+    # .nojekyll stops GitHub Pages from running Jekyll (avoids build errors)
+    (DOCS_DIR / ".nojekyll").write_text("", encoding="utf-8")
+
+    # Copy today's thumbnail images into docs/thumbnails/
+    thumb_src = TMP_DIR / "thumbnails"
+    thumb_dst = DOCS_DIR / "thumbnails"
+    thumb_dst.mkdir(exist_ok=True)
+    today = data["today"]
+    for src in sorted(thumb_src.glob(f"{today}-thumbnail-*.png")):
+        shutil.copy2(src, thumb_dst / src.name)
+        logger.info(f"Copied thumbnail: {src.name}")
 
     logger.info("=== Dashboard complete ===")
     return {name: str(TMP_DIR / name) for name in files}
